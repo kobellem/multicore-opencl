@@ -1,0 +1,14 @@
+appdirs==1.4.3
+cffi==1.10.0
+decorator==4.0.11
+numpy==1.12.1
+olefile==0.44
+packaging==16.8
+Pillow==4.1.1
+py==1.4.33
+pycparser==2.17
+pyopencl==2016.2.1
+pyparsing==2.2.0
+pytest==3.0.7
+pytools==2016.2.6
+six==1.10.0
