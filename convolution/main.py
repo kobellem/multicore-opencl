@@ -155,8 +155,8 @@ def apply_kernel_1d(kernel, kernel_dim, height, width, img):
     """
     kernel_mid = kernel_dim / 2
     dst = numpy.array(img, copy=True)
-    for img_r in range(kernel_mid, (height - kernel_mid)):
-        for img_c in range(kernel_mid, (width - kernel_mid)):
+    for img_r in range(int(kernel_mid), int(height - kernel_mid)):
+        for img_c in range(int(kernel_mid), int(width - kernel_mid)):
             acc = 0.0
             for k_row in range(0, kernel_dim):
                 for k_col in range(0, kernel_dim):
@@ -166,7 +166,7 @@ def apply_kernel_1d(kernel, kernel_dim, height, width, img):
                     image_c_idx = img_c + (k_col - kernel_mid)
                     # Values from both.
                     kernel_value = kernel[k_row][k_col]
-                    image_value  = img[image_r_idx * width + image_c_idx]
+                    image_value  = img[int(image_r_idx * width + image_c_idx)]
 
                     acc += kernel_value * image_value
             dst[img_r * width + img_c] = acc
