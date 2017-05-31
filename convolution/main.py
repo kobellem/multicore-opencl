@@ -189,7 +189,7 @@ kernel_dim = 5
 kernel_sig = 1
 kernel = gaussian_kernel(kernel_dim, kernel_sig)  # gaussian_kernel(kernel_dim, kernel_sig)
 
-print "The kernel:\n", kernel
+print("The kernel:\n", kernel)
 
 # Image input array
 img_src = img_arr
