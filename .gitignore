@@ -1,0 +1,10 @@
+convolution/bin
+convolution/bin/
+convolution/include/
+convolution/inputs/
+convolution/lib/
+convolution/output_seq.jpg
+convolution/pip-selfcheck.json
+convolution/share/
+heterogenous/
+matrix_blocked_autotune/
