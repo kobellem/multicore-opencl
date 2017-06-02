@@ -78,55 +78,66 @@ __kernel void convolve(
     write_imageui(output, pos, pix);
 }"""
 
-# set up device
-context = cl.create_some_context()
-queue = cl.CommandQueue(context)
+def apply_kernel(mask, dim, img_buffer):
+    # input buffers
+    inMask = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=mask)
+    inImg = cl.Image(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, fmt, size, None, img_buffer)
 
-# build the kernels
-program = cl.Program(context, kernel).build()
+    # output buffers
+    outImg = cl.Image(context, cl.mem_flags.WRITE_ONLY, fmt, size)
 
-# read image and construct array
-img = Image.open(sys.argv[1])
-if img.mode != "RGBA":
-    img = img.convert("RGBA")
-img_arr = numpy.asarray(img).astype(numpy.uint8)
-(img_h, img_w, bytes_per_pixel) = img_arr.shape
-size = (img_w, img_h)
+    # work sizes
+    global_work_size = size
+    local_work_size = None
 
-# image format
-fmt = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8)
+    # run the kernel
+    convolve = program.convolve
+    convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None])
 
-# create mask
-dim = 5
-sig = 1
-mask = gaussian_mask(dim, sig)
+    convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg)
 
-# input buffers
-inMask = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=mask)
-inImg = cl.Image(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, fmt, size, None, img_arr)
+    # wait for queue to finish
+    queue.finish()
 
-# output buffers
-outImg = cl.Image(context, cl.mem_flags.WRITE_ONLY, fmt, size)
+    # read the result
+    buffer = numpy.zeros(size[0] * size[1] * 4, numpy.uint8)  
+    origin = (0, 0, 0 )  
+    region = (size[0], size[1], 1 )  
 
-# work sizes
-global_work_size = size
-local_work_size = None
+    cl.enqueue_read_image(queue, outImg, origin, region, buffer).wait()  
 
-# run the kernel
-convolve = program.convolve
-convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None])
-convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg)
+    return buffer
 
-# wait for queue to finish
-queue.finish()
+if __name__ == "__main__":
+    # set up device
+    context = cl.create_some_context()
+    queue = cl.CommandQueue(context)
 
-# read the result
-buffer = numpy.zeros(size[0] * size[1] * 4, numpy.uint8)  
-origin = (0, 0, 0 )  
-region = (size[0], size[1], 1 )  
+    # build the kernels
+    program = cl.Program(context, kernel).build()
 
-cl.enqueue_read_image(queue, outImg, origin, region, buffer).wait()  
+    # read image and construct array
+    img = Image.open(sys.argv[1])
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+    img_arr = numpy.asarray(img).astype(numpy.uint8)
+    (img_h, img_w, bytes_per_pixel) = img_arr.shape
+    size = (img_w, img_h)
 
-# save output image to file
-gsim = Image.frombytes("RGBA", size, buffer.tostring())
-gsim.save("out.jpg")
+    # image format
+    fmt = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8)
+
+    # create mask
+    dim = 5
+    sig = 1
+    mask = gaussian_mask(dim, sig)
+    print(mask)
+
+    x = 10
+    while x > 0:
+        img_arr = apply_kernel(mask, dim, img_arr)
+        x = x - 1
+
+    # save output image to file
+    gsim = Image.frombytes("RGBA", size, img_arr.tostring())
+    gsim.save("out.jpg")
