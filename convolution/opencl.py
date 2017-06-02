@@ -73,7 +73,7 @@ __kernel void convolve(
                 acc += temp * mask[i + j * dim];
             }
         }
-        pix = (uint4)((uint)acc.x, (int)acc.y, (uint)acc.z, (uint)acc.w);
+        pix = (uint4)((uint)acc.x, (uint)acc.y, (uint)acc.z, (uint)acc.w);
     } else {
         pix = read_imageui(input, sampler, pos);
     }
@@ -111,6 +111,23 @@ def apply_kernel(mask, dim, img_buffer):
 
     return buffer
 
+def fault_tolerance(res_ocl, res_seq): 
+    tolerance = 0.2
+    correct = 0
+    wrong = 0
+    for i in range(res_seq.size):
+        expected = res_seq[i]
+        actual = res_ocl[i]
+        absolute_error = numpy.absolute((int(actual) - int(expected)) / 255)
+        if absolute_error <= tolerance:
+            correct += 1
+        else:
+            wrong += 1
+
+    print("correct # values ", correct)
+    print("wrong # values ", wrong)
+    return correct
+
 if __name__ == "__main__":
     # set up device
     context = cl.create_some_context()
@@ -136,7 +153,7 @@ if __name__ == "__main__":
     mask = gaussian_mask(dim, sig)
     print(mask)
 
-    x = 10
+    x = 12
     while x > 0:
         img_arr = apply_kernel(mask, dim, img_arr)
         x = x - 1
@@ -144,3 +161,14 @@ if __name__ == "__main__":
     # save output image to file
     gsim = Image.frombytes("RGBA", size, img_arr.tostring())
     gsim.save("out.jpg")
+
+    
+
+    # check the result with expected output
+    img_seq = Image.open("output_seq.jpg")
+    if img_seq.mode != "RGBA":
+        img_seq = img_seq.convert("RGBA")
+    img_seq_arr = numpy.asarray(img_seq).astype(numpy.uint8)
+    (img_seq_h, img_seq_w, bytes_per_pixel) = img_seq_arr.shape
+    flat_img_seq_arr = img_seq_arr.reshape((img_seq_h * img_seq_w * bytes_per_pixel))
+    fault_tolerance(img_arr, flat_img_seq_arr)
