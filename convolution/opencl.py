@@ -43,23 +43,39 @@ def gaussian_mask(dim, sigma):
                 (math.pow(x_, 2) + math.pow(y_, 2)) / (2.0 * math.pow(sigma, 2))))
             total = total + arr[x][y]
 
-    return normalize_kernel(arr, dim)
+    return normalize_mask(arr, dim)
 
 # the convolve kernel
 kernel = """
 __kernel void convolve(
+    __global float* mask,
+             int dim,
     __read_only image2d_t input,
-    __write_only image2d_t output,
-    const int dim,
-    const float sigma
+    __write_only image2d_t output
     )
 {
     const sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    uint4 res = read_imageui(input, sampler, pos);
+    float4 temp;
+    uint4 pix;
+    float4 acc = (0.0f,0.0f,0.0f,0.0f);
+    int2 current_pos;
 
-    write_imageui(output, pos, res);
+    for (int i = 0; i < dim; i++) {
+        for (int j = 0; j < dim; j++) {
+            current_pos.x = pos.x + i;
+            current_pos.y = pos.y + j;
+            pix = read_imageui(input, sampler, current_pos);
+            temp = (float4)((float)pix.x, (float)pix.y, (float)pix.z, (float)pix.w);
+            acc += temp * mask[i + j * dim];
+        }
+    }
+    current_pos.x = pos.x + (dim>>1);
+    current_pos.y = pos.y + (dim>>1);
+    pix = (uint4)((uint)acc.x, (int)acc.y, (uint)acc.z, (uint)acc.w);
+
+    write_imageui(output, pos, pix);
 }"""
 
 # set up device
@@ -80,7 +96,13 @@ size = (img_w, img_h)
 # image format
 fmt = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8)
 
+# create mask
+dim = 5
+sig = 1
+mask = gaussian_mask(dim, sig)
+
 # input buffers
+inMask = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=mask)
 inImg = cl.Image(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, fmt, size, None, img_arr)
 
 # output buffers
@@ -92,8 +114,8 @@ local_work_size = None
 
 # run the kernel
 convolve = program.convolve
-convolve.set_scalar_arg_dtypes([None, None, numpy.uint32, numpy.float32])
-convolve(queue, global_work_size, local_work_size, inImg, outImg, 6, 1)
+convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None])
+convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg)
 
 # wait for queue to finish
 queue.finish()
