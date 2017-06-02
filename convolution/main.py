@@ -153,7 +153,7 @@ def apply_kernel_1d(kernel, kernel_dim, height, width, img):
        width     : the width of the image in px
        img       : the image array
     """
-    kernel_mid = kernel_dim / 2
+    kernel_mid = (kernel_dim - 1) / 2
     dst = numpy.array(img, copy=True)
     for img_r in range(int(kernel_mid), int(height - kernel_mid)):
         for img_c in range(int(kernel_mid), int(width - kernel_mid)):
