@@ -57,23 +57,26 @@ __kernel void convolve(
     const sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
+    uint mid = (dim - 1) / 2;
     float4 temp;
     uint4 pix;
     float4 acc = (0.0f,0.0f,0.0f,0.0f);
     int2 current_pos;
 
-    for (int i = 0; i < dim; i++) {
-        for (int j = 0; j < dim; j++) {
-            current_pos.x = pos.x + i;
-            current_pos.y = pos.y + j;
-            pix = read_imageui(input, sampler, current_pos);
-            temp = (float4)((float)pix.x, (float)pix.y, (float)pix.z, (float)pix.w);
-            acc += temp * mask[i + j * dim];
+    if(pos.x > mid && pos.x < (get_image_width(input) - mid) && pos.y > mid && pos.y < (get_image_height(input) - mid)) {
+        for (int i = 0; i < dim; i++) {
+            for (int j = 0; j < dim; j++) {
+                current_pos.x = pos.x + i - mid;
+                current_pos.y = pos.y + j - mid;
+                pix = read_imageui(input, sampler, current_pos);
+                temp = (float4)((float)pix.x, (float)pix.y, (float)pix.z, (float)pix.w);
+                acc += temp * mask[i + j * dim];
+            }
         }
+        pix = (uint4)((uint)acc.x, (int)acc.y, (uint)acc.z, (uint)acc.w);
+    } else {
+        pix = read_imageui(input, sampler, pos);
     }
-    current_pos.x = pos.x + (dim>>1);
-    current_pos.y = pos.y + (dim>>1);
-    pix = (uint4)((uint)acc.x, (int)acc.y, (uint)acc.z, (uint)acc.w);
 
     write_imageui(output, pos, pix);
 }"""
