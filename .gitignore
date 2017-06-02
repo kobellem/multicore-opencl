@@ -8,3 +8,4 @@ convolution/pip-selfcheck.json
 convolution/share/
 heterogenous/
 matrix_blocked_autotune/
+*.jpg
