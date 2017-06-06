@@ -57,13 +57,13 @@ __kernel void convolve(
     const sampler_t sampler =  CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
     int2 pos = (int2)(get_global_id(0), get_global_id(1));
 
-    uint mid = (dim - 1) / 2;
+    uint mid = dim>>1;
     float4 temp;
     uint4 pix;
     float4 acc = (0.0f,0.0f,0.0f,0.0f);
     int2 current_pos;
 
-    if(pos.x > mid && pos.x < (get_image_width(input) - mid) && pos.y > mid && pos.y < (get_image_height(input) - mid)) {
+    if(pos.x >= mid && pos.x <= (get_image_width(input) - mid) && pos.y >= mid && pos.y <= (get_image_height(input) - mid)) {
         for (int i = 0; i < dim; i++) {
             for (int j = 0; j < dim; j++) {
                 current_pos.x = pos.x + i - mid;
@@ -126,6 +126,7 @@ def fault_tolerance(res_ocl, res_seq):
 
     print("correct # values ", correct)
     print("wrong # values ", wrong)
+    print("total error: ", wrong / correct)
     return correct
 
 if __name__ == "__main__":
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     mask = gaussian_mask(dim, sig)
     print(mask)
 
-    x = 12
+    x = 10
     while x > 0:
         img_arr = apply_kernel(mask, dim, img_arr)
         x = x - 1
@@ -161,8 +162,6 @@ if __name__ == "__main__":
     # save output image to file
     gsim = Image.frombytes("RGBA", size, img_arr.tostring())
     gsim.save("out.jpg")
-
-    
 
     # check the result with expected output
     img_seq = Image.open("output_seq.jpg")
