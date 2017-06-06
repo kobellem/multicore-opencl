@@ -1,0 +1,19 @@
+[variables]
+
+variables = mask_size
+
+[values]
+
+mask_size = 3,5,7,9,11,13,15
+
+[testing]
+
+test = PYOPENCL_CTX=0 python3 opencl.py inputs/source.bmp %mask_size%
+
+[output]
+
+log = convolution_log.csv
+
+[scoring]
+
+repeat = 30, min

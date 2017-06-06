@@ -4,6 +4,7 @@ import pyopencl as cl
 import numpy
 import sys
 import math
+import time
 
 from PIL import Image
 numpy.set_printoptions(threshold=numpy.nan) # print all data
@@ -63,7 +64,7 @@ __kernel void convolve(
     float4 acc = (0.0f,0.0f,0.0f,0.0f);
     int2 current_pos;
 
-    if(pos.x >= mid && pos.x <= (get_image_width(input) - mid) && pos.y >= mid && pos.y <= (get_image_height(input) - mid)) {
+    if(pos.x >= mid && pos.x < (get_image_width(input) - mid) && pos.y >= mid && pos.y < (get_image_height(input) - mid)) {
         for (int i = 0; i < dim; i++) {
             for (int j = 0; j < dim; j++) {
                 current_pos.x = pos.x + i - mid;
@@ -97,10 +98,14 @@ def apply_kernel(mask, dim, img_buffer):
     convolve = program.convolve
     convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None])
 
+    start_time = time.time()
     convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg)
 
     # wait for queue to finish
     queue.finish()
+    end_time = time.time()
+    elapsed_time = (end_time - start_time) * 1000
+    print("executione time: ", elapsed_time, "ms")
 
     # read the result
     buffer = numpy.zeros(size[0] * size[1] * 4, numpy.uint8)  
@@ -112,7 +117,7 @@ def apply_kernel(mask, dim, img_buffer):
     return buffer
 
 def fault_tolerance(res_ocl, res_seq): 
-    tolerance = 0.2
+    tolerance = 0.1
     correct = 0
     wrong = 0
     for i in range(res_seq.size):
@@ -126,7 +131,7 @@ def fault_tolerance(res_ocl, res_seq):
 
     print("correct # values ", correct)
     print("wrong # values ", wrong)
-    print("total error: ", wrong / correct)
+    print("total error: ", wrong / (wrong + correct))
     return correct
 
 if __name__ == "__main__":
@@ -149,7 +154,7 @@ if __name__ == "__main__":
     fmt = cl.ImageFormat(cl.channel_order.RGBA, cl.channel_type.UNSIGNED_INT8)
 
     # create mask
-    dim = 5
+    dim = int(sys.argv[2])
     sig = 1
     mask = gaussian_mask(dim, sig)
     print(mask)
