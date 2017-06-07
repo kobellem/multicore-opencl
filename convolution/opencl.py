@@ -46,10 +46,10 @@ def gaussian_mask(dim, sigma):
 
     return normalize_mask(arr, dim)
 
-def apply_kernel(mask, dim, img_buffer):
+def apply_kernel():
     # input buffers
     inMask = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=mask)
-    inImg = cl.Image(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, fmt, size, None, img_buffer)
+    inImg = cl.Image(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, fmt, size, None, img_arr)
 
     # output buffers
     outImg = cl.Image(context, cl.mem_flags.WRITE_ONLY, fmt, size)
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 
     x = 10
     while x > 0:
-        img_arr = apply_kernel(mask, dim, img_arr)
+        img_arr = apply_kernel()
         x = x - 1
 
     # save output image to file
