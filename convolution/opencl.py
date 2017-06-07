@@ -122,7 +122,14 @@ if __name__ == "__main__":
     dim = int(sys.argv[2])
     sig = 1
     mask = gaussian_mask(dim, sig)
-    print(mask)
+    print("filter:\n", mask)
+
+    # set up work groups
+    device = context.devices[0]
+    work_group_size = program.convolve.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
+    number_work_groups = size[0] * size[1] / work_group_size
+
+    print("number of work groups: ", number_work_groups)
 
     x = 10
     while x > 0:
