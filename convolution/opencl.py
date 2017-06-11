@@ -54,16 +54,25 @@ def apply_kernel():
     # output buffers
     outImg = cl.Image(context, cl.mem_flags.WRITE_ONLY, fmt, size)
 
+    # intitialize local memory
+    localmem = cl.LocalMemory(int(numpy.dtype(numpy.uint32).itemsize * math.pow((16 + dim),2) * 4))
+
+    # workers
+    workers = (int(size[0] / 8), int(size[1] / 8))
+
     # work sizes
-    global_work_size = size
-    local_work_size = None
+    global_work_size = ((8 + dim) * workers[0], (8 + dim) * workers[1])
+    local_work_size = ((8 + dim), (8 + dim))
+    
+    print("global work size: ", global_work_size)
+    print("local work size: ", local_work_size)
 
     # run the kernel
     convolve = program.convolve
-    convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None])
+    convolve.set_scalar_arg_dtypes([None, numpy.uint32, None, None, None])
 
     start_time = time.time()
-    convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg)
+    convolve(queue, global_work_size, local_work_size, inMask, dim, inImg, outImg, localmem)
 
     # wait for queue to finish
     queue.finish()
@@ -73,8 +82,8 @@ def apply_kernel():
 
     # read the result
     buffer = numpy.zeros(size[0] * size[1] * 4, numpy.uint8)  
-    origin = (0, 0, 0 )  
-    region = (size[0], size[1], 1 )  
+    origin = (0, 0, 0)  
+    region = (size[0], size[1], 1)  
 
     cl.enqueue_read_image(queue, outImg, origin, region, buffer).wait()  
 
@@ -126,12 +135,11 @@ if __name__ == "__main__":
 
     # set up work groups
     device = context.devices[0]
-    work_group_size = program.convolve.get_work_group_info(cl.kernel_work_group_info.WORK_GROUP_SIZE, device)
-    number_work_groups = size[0] * size[1] / work_group_size
 
-    print("number of work groups: ", number_work_groups)
+    print("max work group size: ", device.max_work_group_size)
+    print("max work item sizes: ", device.max_work_item_sizes)
 
-    x = 10
+    x = 1
     while x > 0:
         img_arr = apply_kernel()
         x = x - 1
